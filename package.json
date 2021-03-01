@@ -48,6 +48,6 @@
         "netclustering": "0.0.3",
         "papaparse": "^4.6.3",
         "reorder.js": "^1.0.6",
-        "three": "^0.100.0"
+        "three": "^0.125.0"
     }
 }

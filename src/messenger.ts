@@ -1,6 +1,6 @@
 import { makeIdCompound, sortByPriority, ElementCompound } from './utils'
 import { Selection } from './datamanager'
-import { Time, DynamicGraph, dgraphReplacer, dgraphReviver, IDCompound } from './dynamicgraph'
+import { Time, DynamicGraph, dgraphReplacer, dgraphReviver, IDCompound, copyTimeseriesPropsShallow } from './dynamicgraph'
 import { getDynamicGraph } from './main'
 import { searchForTerm } from './search'
 
@@ -15,6 +15,11 @@ export var MESSAGE_SELECTION_SET_COLORING_VISIBILITY = 'selectionColoring';
 export var MESSAGE_SELECTION_FILTER = 'selectionFilter';
 export var MESSAGE_SELECTION_PRIORITY = 'selectionPriority'
 export var MESSAGE_SEARCH_RESULT = 'searchResult';
+export var MESSAGE_SET_STATE= 'SET_STATE';
+export var MESSAGE_GET_STATE= 'GET_STATE';
+export var MESSAGE_STATE_CREATED= 'STATE_CREATED';
+export var MESSAGE_ZOOM_INTERACTION='ZOOM_INTERACTION';
+
 
 var MESSENGER_PROPAGATE: boolean = true;
 
@@ -30,7 +35,11 @@ var MESSAGE_HANDLERS: string[] = [
     MESSAGE_SELECTION_FILTER,
     MESSAGE_SELECTION_PRIORITY,
     MESSAGE_SEARCH_RESULT,
-    MESSAGE_SELECTION_COLORING
+    MESSAGE_SELECTION_COLORING,
+    MESSAGE_SET_STATE,
+    MESSAGE_GET_STATE,
+    MESSAGE_STATE_CREATED,
+    MESSAGE_ZOOM_INTERACTION
 ]
 
 
@@ -149,6 +158,7 @@ export class HighlightMessage extends Message {
 }
 
 
+
 // SELECTION MESSAGES
 
 export function selection(action: string, compound: ElementCompound, selectionId?: number): void {
@@ -225,6 +235,8 @@ export class CreateSelectionMessage extends Message {
         this.selection = b;
     }
 }
+
+
 
 
 // SET CURRENT SELECTION
@@ -341,7 +353,6 @@ class SelectionColorMessage extends Message {
 
 /// SEARCH SELECTION
 
-
 export function search(term: string, type?: string) {
 
     var idCompound: IDCompound = searchForTerm(term, getDynamicGraph(), type);
@@ -358,12 +369,165 @@ export class SearchResultMessage extends Message {
     }
 }
 
+export class NetworkControls {
+    networkType: string;
+    timeSliderStart: number;
+    timeSliderEnd: number;
+
+    constructor(networkType:string,startTime:number,endTime:number){
+        this.networkType=networkType;
+        this.timeSliderStart=startTime;
+        this.timeSliderEnd=endTime;
+
+    }
+}
+
+export class NodeLinkControls extends NetworkControls{
+    globalZoom: number;
+    panOffsetLocal: number[] ;
+    panOffsetGlobal: number[];
+    linkOpacity: number;
+    nodeOpacity: number;
+    nodeSize: number;
+    edgeGap: number;
+    linkWidth: number;
+    labellingType: number;
+    constructor(networkType:string,startTime:number,endTime:number,globalZoom:number,panOffsetLocal: number[],panOffsetGlobal: number[],linkOpacity:number,nodeOpacity:number,nodeSize:number,edgeGap:number,linkWidth:number,labellingType:number){
+        super(networkType,startTime,endTime);
+        this.globalZoom=globalZoom;
+        this.panOffsetGlobal=panOffsetGlobal;
+        this.panOffsetLocal=panOffsetLocal;
+        this.linkOpacity=linkOpacity;
+        this.nodeOpacity=nodeOpacity;
+        this.nodeSize=nodeSize;
+        this.edgeGap=edgeGap;
+        this.linkWidth=linkWidth;
+        this.labellingType=labellingType;
+    }
+}
+export class MatrixControls extends NetworkControls{
+    labellingType: string;
+    zoom:number;
+    constructor(networkType:string,startTime:number,endTime:number,zoom:number,labellingType:string){
+        super(networkType,startTime,endTime);
+        this.zoom=zoom;
+        this.labellingType=labellingType;
+    }
+}
+export class TimeArchsControls extends NetworkControls{
+    labellingType: string;
+    /* webglState:any;
+    camera_position_x:number;
+    camera_position_y:number;
+    camera_position_z:number; */
+
+    constructor(networkType:string,startTime:number,endTime:number,labellingType:string){
+    //,webglState:any,camera_position_x:number,camera_position_y:number,camera_position_z:number){
+        super(networkType,startTime,endTime);
+        this.labellingType=labellingType;
+       /*  this.webglState=webglState;
+        this.camera_position_x=camera_position_x;
+        this.camera_position_y=camera_position_z;
+        this.camera_position_z=camera_position_z;
+ */
+    }
+    
+}
+export class MapControls extends NetworkControls{
+    nodeOverlap: number;
+    linkOpacity: number;
+    opacityOfPositionlessNodes: number;
+    constructor(networkType:string,startTime:number,endTime:number,nodeOverlap:number,linkOpacity:number,opacityOfPositionlessNodes:number){
+        super(networkType,startTime,endTime);
+        this.nodeOverlap=nodeOverlap;
+        this.linkOpacity=linkOpacity;
+        this.opacityOfPositionlessNodes=opacityOfPositionlessNodes;
+    }
+}
+
+// SET STATE MESSAGE
+
+export class SetStateMessage extends Message {
+    state: NetworkControls; // this is the state with all the parameters to set the view to. 
+    viewType: string;
+    constructor(state: NetworkControls,viewType: string) {
+        super(MESSAGE_SET_STATE);
+        this.state = state;
+        this.viewType=viewType;
+    }
+}
+
+export function setState(state: NetworkControls,viewType:string) {
+    // is called from anywhere in vistorian by calling 
+    // window.vc.messenger.setState(myState);
+    distributeMessage(new SetStateMessage(state,viewType), true);
+}
+
+// GET STATE MESSAGE
 
 
+export class GetStateMessage extends Message {
+    bookmarkIndex: number;
+    viewType: string;
+    isNewBookmark:boolean;
+    typeOfMultiView: string;
+    constructor(bookmarkIndex: number,viewType: string,isNewBookmark:boolean,typeOfMultiView: string){
+        super(MESSAGE_GET_STATE);
+        this.bookmarkIndex=bookmarkIndex;
+        this.viewType=viewType;
+        this.isNewBookmark=isNewBookmark;
+        this.typeOfMultiView=typeOfMultiView;
+    } 
+}
+
+export function getState(bookmarkIndex: number,viewType:string,isNewBookmark:boolean,typeOfMultiView: string){
+    // is called from anywhere in vistorian by calling 
+    // window.vc.messenger.getState(bookmarkIndex);
+
+   distributeMessage(new GetStateMessage(bookmarkIndex,viewType,isNewBookmark,typeOfMultiView), true);
+}
 
 
+export class StateCreatedMessage extends Message{
+    state: NetworkControls;
+    bookmarkIndex: number;
+    viewType: string;
+    isNewBookmark:boolean;
+    typeOfMultiView: string;
+    constructor(state: NetworkControls,bookmarkIndex: number,viewType: string,isNewBookmark:boolean,typeOfMultiView: string) {
+        super(MESSAGE_STATE_CREATED)
+        this.state = state;
+        this.bookmarkIndex=bookmarkIndex;
+        this.viewType=viewType;
+        this.isNewBookmark=isNewBookmark;
+        this.typeOfMultiView=typeOfMultiView;
+    }
+}
 
-// INTERNAL FUNCTIONS ////////////////////////
+export function stateCreated(state: NetworkControls,bookmarkIndex: number,viewType: string,isNewBookmark:boolean,typeOfMultiView: string){
+    // State created : to set the state after getting it from the selected network
+
+    distributeMessage(new StateCreatedMessage(state,bookmarkIndex,viewType,isNewBookmark,typeOfMultiView), true);
+}
+
+export class ZoomInteractionMessage extends Message{
+    visType:string;
+    ineractionType:string;
+    constructor(visType:string,ineractionType:string){
+        super(MESSAGE_ZOOM_INTERACTION)
+        this.visType=visType;
+        this.ineractionType=ineractionType;
+    }
+}
+export function zoomInteraction(visType:string,ineractionType:string){
+    // log zoom interactions
+    distributeMessage(new ZoomInteractionMessage(visType,ineractionType), true);
+}
+
+
+////////////////////////
+// INTERNAL FUNCTIONS //
+////////////////////////
 
 var MESSAGE_KEY: string = 'networkcube_message';
 localStorage[MESSAGE_KEY] = undefined;
@@ -407,7 +571,6 @@ function processMessage(m: Message) {
 
     if ((messageHandler as any)[m.type]) {
         // for messages with handlers
-
         if (m.type == MESSAGE_HIGHLIGHT) {
             var m2: HighlightMessage = <HighlightMessage>m;
             graph.highlight(m2.action, m2.idCompound);
@@ -478,6 +641,10 @@ function processMessage(m: Message) {
                                                         m12Selection.color = m12.color;
                                                     } // ELSE ??
                                                 }
+                                                else
+                                                    if (m.type == MESSAGE_GET_STATE || m.type == MESSAGE_SET_STATE || m.type == MESSAGE_STATE_CREATED || m.type ==  MESSAGE_ZOOM_INTERACTION){
+                                                        // this type is a state message. no adjustments on the graph necessary.
+                                                    }
 
         callHandler(m);
     }
@@ -489,4 +656,3 @@ function callHandler(message: Message) {
         (messageHandler as any)[message.type](message);
     }
 }
-

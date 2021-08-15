@@ -736,8 +736,8 @@ export class DynamicGraph {
                 this.nodeArrays.filter.push(false);
                 this.nodeArrays.locations.push(new ScalarTimeSeries<number>());
                 this.nodeArrays.attributes.push(new Object());
-                this.nodeArrays.colors.push('')
-                this.nodeArrays.shapes.push('')
+                this.nodeArrays.color.push('')
+                this.nodeArrays.shape.push('')
                 if (isValidIndex(data.nodeSchema.label)) {
                     this.nodeArrays.label.push(row[data.nodeSchema.label]);
                 } else {
@@ -778,7 +778,7 @@ export class DynamicGraph {
             // check shapes
             if (isValidIndex(data.nodeSchema.shape)) {
                 var shape = row[data.nodeSchema.shape];
-                this.nodeArrays.shapes.push(shape);
+                this.nodeArrays.shape.push(shape);
             }
 
             // gather node type
@@ -1030,7 +1030,7 @@ export class DynamicGraph {
         for (var i = 0; i < this.linkArrays.length; i++) {
             for (var j = 0; j < this.timeArrays.length; j++) {
                 if(this.linkArrays.weights[i]) {
-                    if (this.linkArrays.weights[i].serie.hasOwnProperty(this.timeArrays.id[j].toString())) {
+                    if (this.linkArrays.weights[i].toArray().hasOwnProperty(this.timeArrays.id[j].toString())) {
                         this.timeArrays.links[j].push(this.linkArrays.id[i]);
                     }
                 }
@@ -1040,7 +1040,7 @@ export class DynamicGraph {
         //Build a color mapping
         const colorSet = new Set(['#e4549b', '#a33a36', '#bd6221', '#dfba47', '#b5b867', '#479b7f', '#335b8e', '#78387d']);
         var colorMappings: { [color: string]: string; } = {};
-        (this.nodeArrays as any).color.forEach(function (color: any) {
+        this.nodeArrays.color.forEach(function (color: any) {
             if (!colorMappings[color]) {
                 let colorSetAsArray = Array.from(colorSet)
                 var generatedColor = colorSetAsArray[Math.floor(Math.random() * colorSetAsArray.length)]
@@ -1050,14 +1050,14 @@ export class DynamicGraph {
         });
 
         //Add color values to nodeArray colors
-        for(var i=0; i<(this.nodeArrays as any).color.length; i++) {
-            (this.nodeArrays as any).color[i] = [(this.nodeArrays as any).color[i], colorMappings[(this.nodeArrays as any).color[i]]];
+        for(var i=0; i<this.nodeArrays.color.length; i++) {
+            this.nodeArrays.color[i] = this.nodeArrays.color[i], colorMappings[this.nodeArrays.color[i]];
         }
 
         //Build a shape mapping
         const shapeSet = new Set(['cross', 'diamond', 'square', 'triangle-down', 'triangle-up']);
         var shapeMappings: { [shape: string]: string; } = {};
-        (this.nodeArrays as any).shape.forEach(function (shape: any) {
+        this.nodeArrays.shape.forEach(function (shape: any) {
             if (!shapeMappings[shape]) {
                 let shapeSetAsArray = Array.from(shapeSet)
                 var generatedShape = shapeSetAsArray[Math.floor(Math.random() * shapeSetAsArray.length)]
@@ -1067,8 +1067,8 @@ export class DynamicGraph {
         });
 
         //Add shapes to nodeArray shapes
-        for(var i=0; i<(this.nodeArrays as any).shape.length; i++) {
-            (this.nodeArrays as any).shape[i] = [(this.nodeArrays as any).shape[i], shapeMappings[(this.nodeArrays as any).shape[i]]];
+        for(var i=0; i<this.nodeArrays.shape.length; i++) {
+            this.nodeArrays.shape[i] = this.nodeArrays.shape[i], shapeMappings[this.nodeArrays.shape[i]];
         }
         console.log(" TEST ")
         console.log(this)
@@ -1870,8 +1870,8 @@ export class NodeArray extends AttributeArray {
     locations: ScalarTimeSeries<number>[] = []
     filter: boolean[] = [];
     nodeType: string[] = [];
-    colors: string[] = [];
-    shapes: string[] = [];
+    color: string[] = [];
+    shape: string[] = [];
 }
 
 export class LinkArray extends AttributeArray {
@@ -2295,7 +2295,7 @@ export class BasicElement {
  * steps in the format key->value. I.e. the value for the
  * time step with ID 3 is accessed by this.3   */
 export class ScalarTimeSeries<T>{
-    serie: any = {};
+    private serie: any = {};
 
     /** @returns a ScalarTimeSeries for the specified period. */
     period(t1: Time, t2: Time): ScalarTimeSeries<T> {
@@ -2318,7 +2318,7 @@ export class ScalarTimeSeries<T>{
     /** @returns the value for a specified time point. */
     get(t: Time): any { // before T!!
         if (this.serie[t.id()] == undefined)
-            return; // this is avoid!!
+            return ; // this is avoid!!
         return this.serie[t.id()];
     }
 
@@ -2326,6 +2326,9 @@ export class ScalarTimeSeries<T>{
         return this.toArray().length;
     }
 
+    getSerie(): Object[]{
+        return this.serie;
+    }
 
     /** Returns all values as array.
      * @param removeDuplicates
@@ -2664,27 +2667,29 @@ export class NumberQuery extends Query {
     }
 
     min(): number {
-        var min: number = this._elements[0];
+        this._elements = this.makeNumbers(this._elements);
+        var min: number = parseInt(this._elements[0]+'');
         for (var i = 1; i < this._elements.length; i++) {
             if (this._elements[i] != undefined)
-                min = Math.min(min, this._elements[i]);
+                min = Math.min(min, parseInt(this._elements[i]+''));
         }
         return min;
     }
     max(): number {
-        var max: number = this._elements[0];
+        var max: number = parseInt(this._elements[0]+'');
         for (var i = 1; i < this._elements.length; i++) {
             if (this._elements[i] != undefined)
-                max = Math.max(max, this._elements[i]);
+                max = Math.max(max,  parseInt(this._elements[i]+''));
         }
         return max;
     }
     mean(): number {
+        this._elements = this.makeNumbers(this._elements);
         var v = 0;
         var count = 0;
         for (var i = 0; i < this._elements.length; i++) {
             if (typeof this._elements[i] == 'number') {
-                v += this._elements[i];
+                v += parseInt(this._elements[i]+'');
                 count++;
             }
         }
@@ -2694,7 +2699,7 @@ export class NumberQuery extends Query {
         var sum = 0;
         for (var i = 0; i < this._elements.length; i++) {
             if (typeof this._elements[i] == 'number') {
-                sum += this._elements[i];
+                sum += parseInt(this._elements[i]+'');
             }
         }
         return sum;
@@ -2713,6 +2718,23 @@ export class NumberQuery extends Query {
             f(this._elements[i], i);
         }
         return this;
+    }
+    
+    makeNumbers(elements:number[]): number[] 
+    {
+        if(elements && elements.length > 0){
+            var first = elements[0]
+            if(typeof first == 'string'){
+                var numberElements:number[] = []
+                for (var i = 0; i < elements.length; i++){
+                    numberElements.push(parseFloat(elements[i]+''))
+                }
+                console.log('string array converted', numberElements)
+                return numberElements;
+            }
+        }
+
+        return elements;
     }
 
 }
@@ -3128,22 +3150,25 @@ export class Node extends BasicElement {
         var serie: ScalarTimeSeries<number>;
         if (t2 != undefined && t1 != undefined)
             serie = (<ScalarTimeSeries<number>>this.attr('locations')).period(t1, t2);
+            // return this.attr('locations').period(t1, t2);
         else if (t1 != undefined)
             serie = (<ScalarTimeSeries<number>>(this.attr('locations')).get(t1));
+            // return this.attr('locations').get(t1);
         else
             serie = (<ScalarTimeSeries<number>>this.attr('locations'));
+            // return this.attr('locations');
 
-        serie = serie.serie;
-        // replace numbers by times
-        var serie2 = new ScalarTimeSeries<Location>();
-        for (var t in serie) {
+        var serie2 = serie.getSerie();
+        // replace numbers by locations
+        var serie3 = new ScalarTimeSeries<Location>();
+        for (var t in serie2) {
             var time = this.g.time(parseInt(t));
-            var location = this.g.location((serie as any)[t]);
+            var location = this.g.location((serie2 as any)[t]);
             if (time != undefined && location != undefined) {
-                serie2.set(time, location);
+                serie3.set(time, location);
             }
         }
-        return serie2;
+        return serie3;
     }
 
 

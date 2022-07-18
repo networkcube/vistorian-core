@@ -1,3 +1,8 @@
+> **Note**
+> The latest code for the Vistorian project is now kept in the [vistorian-monorepo](https://github.com/networkcube/vistorian-monorepo) repository.
+> The code for the `vistorian-core` package is [here](https://github.com/networkcube/vistorian-monorepo/tree/master/packages/vistorian-core).
+
+
 # Vistorian-core
 
 This repository contains the core logic behind networkcube.
